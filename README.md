@@ -1,11 +1,6 @@
 # Animelon Download
-Command line downloader for https://animelon.com/
 
-## Dependencies:
-```
-requests
-pycryptodome
-```
+Command line downloader for https://animelon.com/
 
 ## Args:
 
