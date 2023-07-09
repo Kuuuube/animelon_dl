@@ -133,7 +133,6 @@ class AnimelonDownloader():
                 Return:
                     a list of tuples (subtitleName, subtitleContent)
         '''
-        decryptor = subtitle_decryptor.SubtitleDecryptor()
         if languageSubList is None:
             languageSubList = self.subtitlesTypes
         subtitles = []
@@ -142,7 +141,7 @@ class AnimelonDownloader():
             subtitleList = i["content"]
             for j in languageSubList:
                 if j in subtitleList.keys():
-                    subtitles.append((j, decryptor.decrypt_subtitle(subtitleList[j])))
+                    subtitles.append((j, subtitle_decryptor.decrypt_subtitle(subtitleList[j])))
         return (subtitles)
 
     #def saveSubtitle(self, resObj, languageSubList:list=None, savePath:str=None):
