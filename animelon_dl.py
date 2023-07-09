@@ -7,7 +7,6 @@ import sys
 import subtitle_decryptor
 import collections
 import traceback
-import re
 
 session_tuple = collections.namedtuple("session", "session headers")
 settings_tuple = collections.namedtuple("settings", "save_path subtitles_only quality_priorities")
