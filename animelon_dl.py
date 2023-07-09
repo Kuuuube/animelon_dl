@@ -17,16 +17,17 @@ def download_video(current_session, url, file_name, stream, quality):
         video = current_session.session.get(url, stream = True)
 
     file_size = int(video.headers.get('Content-Length', None))
-    print("Downloading : " + file_name.split('/')[-1] + " " + "(%.2f MB)" % (file_size * 1024 ** -2) + " " + quality + " quality", " ...")
-    progress_bar(0, file_size, 80, True)
+    print("Downloading : " + str(file_name.split('/')[-1]) + " " + "(%.2f MB)" % (file_size * 1024 ** -2) + " " + quality + " quality...")
+    start_time = time.time()
+    progress_bar(0, file_size, start_time, start_time, 80, True)
     with open(file_name, 'wb') as f:
         for chunk in video.iter_content(2048):
             f.write(chunk)
-            progress_bar(os.path.getsize(file_name), file_size, 80, False)
+            progress_bar(os.path.getsize(file_name), file_size, start_time, time.time(), 80, False)
 
-    progress_bar(file_size, file_size, 80, False) #show 100% even if the last progress_bar update does not show 100%
+    progress_bar(file_size, file_size, start_time, time.time(), 80, False) #show 100% even if the last progress_bar update does not show 100%
 
-def progress_bar(current, max, bar_size, init):
+def progress_bar(current, max, start_time, current_time, bar_size, init):
     if not init:
         sys.stdout.write("\033[F\033[K\033[F\033[K")
 
@@ -43,7 +44,7 @@ def progress_bar(current, max, bar_size, init):
     for _ in range(unfilled_boxes):
         progress_bar += "░"
 
-    print("%.2f" % (current * 1024 ** -2) + " / " +  "%.2f MB" % (max * 1024 ** -2) + "\n" + progress_bar + " " + percent)
+    print("%.2f" % (current * 1024 ** -2) + " / " +  "%.2f MB" % (max * 1024 ** -2) + " in " + "%.2fs" % (current_time - start_time) + "\n" + progress_bar + " " + percent)
 
 def get_subtitle_from_json(res_obj):
     subtitles = []
@@ -63,9 +64,9 @@ def save_subtitle_to_file(language_sub, content, save_path, video_name):
     iso = {"englishSub" : "en", 'romajiSub' : "ro", "japaneseSub" : "jp", "hiraganaSub" : "hi", "katakanaSub" : "ka"}
     file_name = os.path.join(save_path, video_name + "." + iso[language_sub] + ext)
     if os.path.exists(file_name):
-        print(file_name + " previously saved, not resaving")
+        print(str(file_name) + " previously saved, not resaving")
     else:
-        print("Saved " + file_name)
+        print("Saved " + str(file_name))
         with open(file_name, "wb") as f:
             f.write(content)
 
@@ -99,7 +100,7 @@ def download_from_res_obj(current_session, res_obj, file_name, settings):
                 video_stream = current_session.session.get(video_url, stream=True)
                 if video_stream.status_code == 200:
                     download_video(current_session, video_url, file_name, video_stream, quality)
-                    print("Finished downloading ", file_name)
+                    print("Finished downloading " + str(file_name))
                     time.sleep(5)
                     return file_name
 
@@ -125,7 +126,7 @@ def get_episode_list(current_session, series_url):
             series_url = series_url.replace('\\', '')
             return get_episode_list(current_session, series_url)
     except Exception:
-        print("Error: Could not parse anime info :\n", traceback.format_exc(), url , "\n", response, response.content, file=sys.stderr)
+        print("Error: Could not parse anime info :\n", traceback.format_exc(), url, "\n", response, response.content, file=sys.stderr)
         return None
     return res_obj
 
@@ -143,9 +144,9 @@ def download_from_video_page(current_session, url, settings, id = None, file_nam
             file = download_from_res_obj(current_session, jsonsed["resObj"], file_name, settings)
             if file is not None or (file == "skipped video" and settings.subtitles_only):
                 return file
-            print ("Failed to download ", file_name, "retrying ... (", 5 - tries, " tries left)"),
+            print ("Failed to download " + str(file_name) + " retrying ... ( " + str(5 - tries) + " tries left)"),
             time.sleep(5 * tries)
-    print("Failed to download ", file_name)
+    print("Failed to download " + str(file_name))
 
 def download_episodes(current_session, episodes, title, season_number, settings):
     index = 0
@@ -156,7 +157,7 @@ def download_episodes(current_session, episodes, title, season_number, settings)
         file_name = title + " S" + str(season_number) + "E" + str(index) + ".mp4"
         os.makedirs(settings.save_path, exist_ok=True)
         file_name = os.path.join(settings.save_path, file_name)
-        print(file_name, " : ", url)
+        print(str(file_name) + " : " + url)
         try:
             download_from_video_page(current_session, url, settings, file_name)
             downloaded_episodes.append(index)
@@ -169,7 +170,7 @@ def download_series(current_session, url, settings):
     if res_obj is None:
         return
     title = res_obj["_id"]
-    print("Title: ", title)
+    print("Title: " + str(title))
     series_save_path = os.path.join(settings.save_path, title)
     seasons = res_obj["seasons"]
     for season in seasons:
