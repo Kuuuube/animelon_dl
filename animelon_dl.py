@@ -14,19 +14,17 @@ settings_tuple = collections.namedtuple("settings", "save_path subtitles_only qu
 def download_video(current_session, url, file_name, stream, quality):
     video = stream
     if video is None:
-        video = current_session.session.get(url, stream=True)
+        video = current_session.session.get(url, stream = True)
 
-    block_size = 1024
     file_size = int(video.headers.get('Content-Length', None))
     print("Downloading : " + file_name.split('/')[-1] + " " + "(%.2f MB)" % (file_size * 1024 ** -2) + " " + quality + " quality", " ...")
-    n_chunk = 2
     progress_bar(0, file_size, 80, True)
     with open(file_name, 'wb') as f:
-        for i, chunk in enumerate(video.iter_content(chunk_size = n_chunk * block_size)):
+        for chunk in video.iter_content(2048):
             f.write(chunk)
-            progress_bar((i + 1) * block_size * n_chunk, file_size, 80, False)
+            progress_bar(os.path.getsize(file_name), file_size, 80, False)
 
-    progress_bar(1, 1, 80, False) #show 100% even if the last progress_bar update does not show 100%
+    progress_bar(file_size, file_size, 80, False) #show 100% even if the last progress_bar update does not show 100%
 
 def progress_bar(current, max, bar_size, init):
     if not init:
@@ -64,10 +62,12 @@ def save_subtitle_to_file(language_sub, content, save_path, video_name):
 
     iso = {"englishSub" : "en", 'romajiSub' : "ro", "japaneseSub" : "jp", "hiraganaSub" : "hi", "katakanaSub" : "ka"}
     file_name = os.path.join(save_path, video_name + "." + iso[language_sub] + ext)
-    print("Saved " + file_name)
-    with open(file_name, "wb") as f:
-        f.write(content)
-    return file_name
+    if os.path.exists(file_name):
+        print(file_name + " previously saved, not resaving")
+    else:
+        print("Saved " + file_name)
+        with open(file_name, "wb") as f:
+            f.write(content)
 
 def save_subtitles_from_res_obj(res_obj, video_name, save_path):
     file_names = []
@@ -87,7 +87,6 @@ def download_from_res_obj(current_session, res_obj, file_name, settings):
 
     video = (res_obj["video"])
     video_urls = video["videoURLsData"]
-    time.sleep(5)
     for user_agent_key in video_urls.keys():
         #animelon will allow us to download the video only if we send the corresponding user agent
         #also idk why the userAgent is formatted that way in the JSON, but we have to replace this.
@@ -101,6 +100,7 @@ def download_from_res_obj(current_session, res_obj, file_name, settings):
                 if video_stream.status_code == 200:
                     download_video(current_session, video_url, file_name, video_stream, quality)
                     print("Finished downloading ", file_name)
+                    time.sleep(5)
                     return file_name
 
 def get_episode_list(current_session, series_url):
@@ -108,12 +108,14 @@ def get_episode_list(current_session, series_url):
     url = "https://animelon.com/api/series/" + series_name
     status_code = 403
     tries = 0
-    while status_code != 200 and tries < 5:
+    while tries < 5 and status_code != 200:
         response = current_session.session.get(url)
-        statusCode = response.status_code
+        status_code = response.status_code
         tries += 1
+        if status_code == 200:
+            break
         time.sleep(0.5)
-    if (statusCode != 200):
+    if (status_code != 200):
         print("Error getting anime info")
         return None
     try:
@@ -139,10 +141,8 @@ def download_from_video_page(current_session, url, settings, id = None, file_nam
         if response.status_code == 200:
             jsonsed = json.loads(response.content)
             file = download_from_res_obj(current_session, jsonsed["resObj"], file_name, settings)
-            if file is not None:
+            if file is not None or (file == "skipped video" and settings.subtitles_only):
                 return file
-            if file == "skipped video" and settings.subtitles_only:
-                return "skipped video"
             print ("Failed to download ", file_name, "retrying ... (", 5 - tries, " tries left)"),
             time.sleep(5 * tries)
     print("Failed to download ", file_name)
