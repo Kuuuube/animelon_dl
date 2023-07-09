@@ -26,6 +26,8 @@ def download_video(current_session, url, file_name, stream, quality):
             f.write(chunk)
             progress_bar((i + 1) * block_size * n_chunk, file_size, 80, False)
 
+    progress_bar(1, 1, 80, False) #show 100% even if the last progress_bar update does not show 100%
+
 def progress_bar(current, max, bar_size, init):
     if not init:
         sys.stdout.write("\033[F\033[K\033[F\033[K")
