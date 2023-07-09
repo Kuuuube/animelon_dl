@@ -36,6 +36,25 @@ def progress_bar(current, max, start_time, current_time, bar_size, init):
     filled_boxes = int(current / chunks)
     unfilled_boxes = bar_size - filled_boxes
 
+    elapsed_time = current_time - start_time
+    estimated_time = 0
+    if current != 0:
+        estimated_time = max / current * (current_time - start_time)
+
+    elapesed_time_str = ""
+    estimated_time_str = ""
+    if elapsed_time < 60:
+        elapesed_time_str = "%.2fs" % elapsed_time
+    else:
+        minutes = elapsed_time / 60
+        elapesed_time_str = str(int(minutes)) + "m " + "%.2fs" % (minutes * 60 - int(minutes) * 60)
+
+    if estimated_time < 60:
+        estimated_time_str = "%.2fs" % estimated_time
+    else:
+        minutes = estimated_time / 60
+        estimated_time_str = str(int(minutes)) + "m " + "%.2fs" % (minutes * 60 - int(minutes) * 60)
+
     progress_bar = ""
 
     for _ in range(filled_boxes):
@@ -44,7 +63,7 @@ def progress_bar(current, max, start_time, current_time, bar_size, init):
     for _ in range(unfilled_boxes):
         progress_bar += "░"
 
-    print("%.2f" % (current * 1024 ** -2) + " / " +  "%.2f MB" % (max * 1024 ** -2) + " in " + "%.2fs" % (current_time - start_time) + "\n" + progress_bar + " " + percent)
+    print("%.2f" % (current * 1024 ** -2) + " / " +  "%.2f MB" % (max * 1024 ** -2) + " in " + elapesed_time_str + " (est " + estimated_time_str + ")" + "\n" + progress_bar + " " + percent)
 
 def get_subtitle_from_json(res_obj):
     subtitles = []
