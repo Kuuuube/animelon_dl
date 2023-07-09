@@ -38,7 +38,7 @@ def downloadVideo(downloader, url, fileName=None, stream=None, quality="unknown"
     with open(fileName, 'wb') as f:
         for i, chunk in enumerate(video.iter_content(chunk_size = n_chunk * block_size)):
             f.write(chunk)
-            progressbar(i * block_size, file_size, 80, False)
+            progressbar((i + 1) * block_size * n_chunk, file_size, 80, False)
     return fileName
 
 def progressbar(current, max, bar_size, init):
