@@ -8,6 +8,10 @@ import argparse
 import sys
 import subtitle_decryptor
 import collections
+import traceback
+
+session_tuple = collections.namedtuple("session", "session headers")
+settings_tuple = collections.namedtuple("settings", "save_path subtitles_only quality_priorities")
 
 def downloadVideo(current_session, url, fileName, stream, quality, savePath):
     if fileName is None:
@@ -120,9 +124,9 @@ def getEpisodeList(current_session, seriesURL):
         resObj = jsoned["resObj"]
         if resObj is None and '\\' in seriesURL:
             seriesURL = seriesURL.replace('\\', '')
-            return getEpisodeList(seriesURL)
-    except Exception as e:
-        print ("Error: Could not parse anime info :\n", e, url , "\n", response, response.content, file=sys.stderr)
+            return getEpisodeList(current_session, seriesURL)
+    except Exception:
+        print ("Error: Could not parse anime info :\n", traceback.format_exc(), url , "\n", response, response.content, file=sys.stderr)
         return None
     return resObj
 
@@ -147,25 +151,25 @@ def downloadFromVideoPage(current_session, url, settings, id = None, fileName = 
             time.sleep(5 * tries)
     print ("Failed to download ", fileName)
 
-def downloadEpisodes(current_session, episodes:dict, title:str, seasonNumber:int=0, savepath:str="./"):
+def downloadEpisodes(current_session, episodes, title, seasonNumber, settings):
     index = 0
     downloadedEpisodes = []
     for episode in episodes:
         index += 1
         url = "https://animelon.com/video/" + episode
         fileName = title + " S" + str(seasonNumber) + "E" + str(index) + ".mp4"
-        os.makedirs(savepath, exist_ok=True)
-        fileName = os.path.join(savepath, fileName)
+        os.makedirs(settings.save_path, exist_ok=True)
+        fileName = os.path.join(settings.save_path, fileName)
         print(fileName, " : ", url)
         try:
-            downloadFromVideoPage(current_session, url, savepath, fileName = fileName)
+            downloadFromVideoPage(current_session, url, settings, fileName = fileName)
             downloadedEpisodes.append(index)
-        except Exception as e:
+        except Exception:
             print("Error: Failed to download " + url, file=sys.stderr)
-            print(e)
+            print(traceback.format_exc())
 
 def downloadSeries(current_session, url, settings):
-    resObj = getEpisodeList(url)
+    resObj = getEpisodeList(current_session, url)
     if resObj is None:
         return
     title = resObj["_id"]
@@ -175,23 +179,22 @@ def downloadSeries(current_session, url, settings):
     for season in seasons:
         seasonNumber = int(season["number"])
         seasonSavePath = os.path.join(seriesSavePath, "S%.2d" % seasonNumber)
+        settings = settings_tuple(seasonSavePath, settings.subtitles_only, settings.quality_priorities)
         os.makedirs(seasonSavePath, exist_ok=True)
         print("Season %d:" % (seasonNumber))
         episodes = season["episodes"]
-        downloadEpisodes(current_session, episodes, title, seasonNumber = seasonNumber, savePath = seasonSavePath)
+        downloadEpisodes(current_session, episodes, title, seasonNumber, settings)
 
 parser = argparse.ArgumentParser(description='Downloads videos from animelon.com')
 parser.add_argument('videoURLs', metavar='videoURLs', type=str, nargs='+', help='A series or video page URL, eg: https://animelon.com/series/Death%%20Note or https://animelon.com/video/579b1be6c13aa2a6b28f1364')
-parser.add_argument("--save_path", '-f', metavar='savePath', help='Path to save', type=str, default="")
+parser.add_argument("--save_path", '-f', metavar='savePath', help='Path to save', type=str, default="./")
 parser.add_argument('--subtitles_only', help='Only downloads subtitles', action='store', default=False, const=True, nargs='?')
 parser.add_argument('--quality_priorities', help='Set quality priorities (ozez, stz, tsz)', default=["ozez", "stz", "tsz"], type=str, nargs='+')
 args = parser.parse_args()
 
-session_tuple = collections.namedtuple("session", "session headers")
 current_session = session_tuple(requests.Session(), { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36" })
 current_session.session.headers.update(current_session.headers)
 
-settings_tuple = collections.namedtuple("settings", "save_path subtitles_only quality_priorities")
 settings = settings_tuple(args.save_path, args.subtitles_only, args.quality_priorities)
 
 dlEpisodes = []
