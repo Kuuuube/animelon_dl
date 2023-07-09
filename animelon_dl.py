@@ -152,7 +152,7 @@ class AnimelonDownloader():
     #        self.saveSubtitleToFile(i[0], i[1], savePath=savePath)
 
     def languageSubToIso(self, languageSub:str):
-        iso = {"englishSub" : "en", 'romajiSub' : "ja", "japaneseSub" : "jp", "hiraganaSub" : "hiragana"}
+        iso = {"englishSub" : "en", 'romajiSub' : "ro", "japaneseSub" : "jp", "hiraganaSub" : "hi"}
         if languageSub in iso:
             return (iso[languageSub])
         return (languageSub)
