@@ -441,9 +441,10 @@ if __name__ == "__main__":
     parser.add_argument('--subtitlesType', metavar='subtitlesType', help='Subtitles types to download (englishSub, romajiSub, hiraganaSub, japaneseSub, none)',\
         type=str, default=("englishSub", "romajiSub", "hiraganaSub", "japaneseSub"), nargs='+')
     parser.add_argument('--subtitlesOnly', help='Only downloads subtitles', action='store', default=False, const=True, nargs='?')
+    parser.add_argument('--qualityPriorities', help='Set quality priorities (ozez, stz, tsz)', default=["ozez", "stz", "tsz"], type=str, nargs='+')
     args = parser.parse_args()
     urls = args.videoURLs
     downloader = AnimelonDownloader(savePath=args.savePath, processMax=args.forks, maxTries=args.maxTries,
-        sleepTime=args.sleepTime, sleepTimeRetry=args.sleepTimeRetry, subtitlesTypes=args.subtitlesType, subtitlesOnly=args.subtitlesOnly)
+        sleepTime=args.sleepTime, sleepTimeRetry=args.sleepTimeRetry, subtitlesTypes=args.subtitlesType, subtitlesOnly=args.subtitlesOnly, qualityPriorities=args.qualityPriorities)
     downloader.downloadFromURLList(urls)
     exit(0)
