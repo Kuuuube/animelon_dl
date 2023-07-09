@@ -91,12 +91,6 @@ class AnimelonDownloader():
         p.start()
         return (p)
 
-    def __del__(self):
-        '''
-            Closes the session
-        '''
-        self.waitForFreeProcess(1)
-
     def downloadVideo(self, url, fileName=None, stream=None, quality="unknown"):
         '''
             Downloads a video from the url
@@ -219,7 +213,7 @@ class AnimelonDownloader():
             self.saveSubtitlesFromResObj(resObj, videoName=os.path.basename(fileName).replace(".mp4", ""),
                 savePath=os.path.dirname(fileName))
         if (self.subtitlesOnly):
-            return (None)
+            return ("skipped video")
         video = (resObj["video"])
         videoURLs = video["videoURLsData"]
         time.sleep(self.sleepTime)
@@ -268,6 +262,8 @@ class AnimelonDownloader():
                 file = self.downloadFromResObj(jsonsed["resObj"], fileName=fileName, saveSubtitle=saveSubtitle)
                 if file is not None:
                     return (file)
+                if file == "skipped video" and self.subtitlesOnly:
+                    return "skipped video"
                 print ("Failed to download ", fileName, "retrying ... (", self.maxTries - tries, " tries left)"),
                 time.sleep(self.sleepTime * tries)
         print ("Failed to download ", fileName)
