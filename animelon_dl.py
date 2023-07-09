@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import requests
 import time
 import os
@@ -9,29 +7,27 @@ import sys
 import subtitle_decryptor
 import collections
 import traceback
+import re
 
 session_tuple = collections.namedtuple("session", "session headers")
 settings_tuple = collections.namedtuple("settings", "save_path subtitles_only quality_priorities")
 
-def downloadVideo(current_session, url, fileName, stream, quality, savePath):
-    if fileName is None:
-        fileName = url.split("/")[-1] + ".mp4"
-        fileName = os.path.join(savePath, fileName)
+def download_video(current_session, url, file_name, stream, quality):
     video = stream
     if video is None:
         video = current_session.session.get(url, stream=True)
 
     block_size = 1024
     file_size = int(video.headers.get('Content-Length', None))
-    print("Downloading : " + fileName.split('/')[-1] + " " + "(%.2f MB)" % (file_size * 1024 ** -2) + " " + quality + " quality", " ...")
+    print("Downloading : " + file_name.split('/')[-1] + " " + "(%.2f MB)" % (file_size * 1024 ** -2) + " " + quality + " quality", " ...")
     n_chunk = 2
-    progressbar(0, file_size, 80, True)
-    with open(fileName, 'wb') as f:
+    progress_bar(0, file_size, 80, True)
+    with open(file_name, 'wb') as f:
         for i, chunk in enumerate(video.iter_content(chunk_size = n_chunk * block_size)):
             f.write(chunk)
-            progressbar((i + 1) * block_size * n_chunk, file_size, 80, False)
+            progress_bar((i + 1) * block_size * n_chunk, file_size, 80, False)
 
-def progressbar(current, max, bar_size, init):
+def progress_bar(current, max, bar_size, init):
     if not init:
         sys.stdout.write("\033[F\033[K\033[F\033[K")
 
@@ -50,88 +46,87 @@ def progressbar(current, max, bar_size, init):
 
     print("%.2f" % (current * 1024 ** -2) + " / " +  "%.2f MB" % (max * 1024 ** -2) + "\n" + progress_bar + " " + percent)
 
-def getSubtitleFromJSON(resObj):
+def get_subtitle_from_json(res_obj):
     subtitles = []
-    subObj = resObj["subtitles"]
-    for i in subObj:
-        subtitleList = i["content"]
+    sub_obj = res_obj["subtitles"]
+    for i in sub_obj:
+        subtitle_list = i["content"]
         for j in ["englishSub", "romajiSub", "hiraganaSub", "japaneseSub", "katakanaSub"]:
-            if j in subtitleList.keys():
-                subtitles.append((j, subtitle_decryptor.decrypt_subtitle(subtitleList[j])))
+            if j in subtitle_list.keys():
+                subtitles.append((j, subtitle_decryptor.decrypt_subtitle(subtitle_list[j])))
     return subtitles
 
-def saveSubtitleToFile(languageSub, content, savePath, videoName:str=""):
+def save_subtitle_to_file(language_sub, content, save_path, video_name):
     ext = ".ass"
     if content[0:4] == b"\x31\x0A\x30\x30": #srt magicbytes
         ext = ".srt"
 
     iso = {"englishSub" : "en", 'romajiSub' : "ro", "japaneseSub" : "jp", "hiraganaSub" : "hi", "katakanaSub" : "ka"}
-    fileName = os.path.join(savePath, videoName + "." + iso[languageSub] + ext)
-    with open(fileName, "wb") as f:
+    file_name = os.path.join(save_path, video_name + "." + iso[language_sub] + ext)
+    print("Saved " + file_name)
+    with open(file_name, "wb") as f:
         f.write(content)
-    return fileName
+    return file_name
 
-def saveSubtitlesFromResObj(resObj, videoName = None, savePath = None):
-    fileNames = []
-    subtitleList = getSubtitleFromJSON(resObj)
+def save_subtitles_from_res_obj(res_obj, video_name, save_path):
+    file_names = []
+    subtitleList = get_subtitle_from_json(res_obj)
     for sub in subtitleList:
-        fileNames.append(saveSubtitleToFile(sub[0], sub[1], savePath=savePath, videoName=videoName))
-    return fileNames
+        file_names.append(save_subtitle_to_file(sub[0], sub[1], save_path, video_name))
+    return file_names
 
-def downloadFromResObj(current_session, resObj, fileName, settings):
-    title = resObj["title"]
-    if fileName is None:
-        fileName = os.path.join(settings.save_path, title + ".mp4")
+def download_from_res_obj(current_session, res_obj, file_name, settings):
+    title = res_obj["title"]
+    if file_name is None:
+        file_name = os.path.join(settings.save_path, title + ".mp4")
 
-    saveSubtitlesFromResObj(resObj, videoName = os.path.basename(fileName).replace(".mp4", ""), savePath = os.path.dirname(fileName))
+    save_subtitles_from_res_obj(res_obj, os.path.basename(file_name).replace(".mp4", ""), os.path.dirname(file_name))
     if (settings.subtitles_only):
         return "skipped video"
 
-    video = (resObj["video"])
-    videoURLs = video["videoURLsData"]
+    video = (res_obj["video"])
+    video_urls = video["videoURLsData"]
     time.sleep(5)
-    for userAgentKey in videoURLs.keys():
+    for user_agent_key in video_urls.keys():
         #animelon will allow us to download the video only if we send the corresponding user agent
         #also idk why the userAgent is formatted that way in the JSON, but we have to replace this.
-        current_session.session.headers.update({"User-Agent": userAgentKey.replace("=+(dot)+=", ".")})
-        mobileUrlList = videoURLs[userAgentKey]
-        videoURLsSublist = mobileUrlList["videoURLs"]
+        current_session.session.headers.update({"User-Agent": user_agent_key.replace("=+(dot)+=", ".")})
+        mobile_url_list = video_urls[user_agent_key]
+        video_urls_sublist = mobile_url_list["videoURLs"]
         for quality in settings.quality_priorities:
-            if quality in videoURLsSublist.keys():
-                videoURL = videoURLsSublist[quality]
-                videoStream = current_session.session.get(videoURL, stream=True)
-                if videoStream.status_code == 200:
-                    downloadVideo(current_session, videoURL, fileName, videoStream, quality, settings.save_path)
-                    print ("Finished downloading ", fileName)
-                    return fileName
-    return None
+            if quality in video_urls_sublist.keys():
+                video_url = video_urls_sublist[quality]
+                video_stream = current_session.session.get(video_url, stream=True)
+                if video_stream.status_code == 200:
+                    download_video(current_session, video_url, file_name, video_stream, quality)
+                    print("Finished downloading ", file_name)
+                    return file_name
 
-def getEpisodeList(current_session, seriesURL):
-    seriesName = seriesURL.rsplit('/', 1)[-1]
-    url = "https://animelon.com/api/series/" + seriesName
-    statusCode = 403
+def get_episode_list(current_session, series_url):
+    series_name = series_url.rsplit('/', 1)[-1]
+    url = "https://animelon.com/api/series/" + series_name
+    status_code = 403
     tries = 0
-    while statusCode != 200 and tries < 5:
+    while status_code != 200 and tries < 5:
         response = current_session.session.get(url)
         statusCode = response.status_code
         tries += 1
         time.sleep(0.5)
     if (statusCode != 200):
-        print ("Error getting anime info")
+        print("Error getting anime info")
         return None
     try:
         jsoned = json.loads(response.text)
-        resObj = jsoned["resObj"]
-        if resObj is None and '\\' in seriesURL:
-            seriesURL = seriesURL.replace('\\', '')
-            return getEpisodeList(current_session, seriesURL)
+        res_obj = jsoned["resObj"]
+        if res_obj is None and '\\' in series_url:
+            series_url = series_url.replace('\\', '')
+            return get_episode_list(current_session, series_url)
     except Exception:
-        print ("Error: Could not parse anime info :\n", traceback.format_exc(), url , "\n", response, response.content, file=sys.stderr)
+        print("Error: Could not parse anime info :\n", traceback.format_exc(), url , "\n", response, response.content, file=sys.stderr)
         return None
-    return resObj
+    return res_obj
 
-def downloadFromVideoPage(current_session, url, settings, id = None, fileName = None):
-    assert(url is not None or id is not None)
+def download_from_video_page(current_session, url, settings, id = None, file_name = None):
     if url is None:
         url = "https://animelon.com/video/" + id
     if id is None:
@@ -142,71 +137,71 @@ def downloadFromVideoPage(current_session, url, settings, id = None, fileName = 
         response = requests.get(apiUrl, headers = current_session.headers)
         if response.status_code == 200:
             jsonsed = json.loads(response.content)
-            file = downloadFromResObj(current_session, jsonsed["resObj"], fileName, settings)
+            file = download_from_res_obj(current_session, jsonsed["resObj"], file_name, settings)
             if file is not None:
                 return file
             if file == "skipped video" and settings.subtitles_only:
                 return "skipped video"
-            print ("Failed to download ", fileName, "retrying ... (", 5 - tries, " tries left)"),
+            print ("Failed to download ", file_name, "retrying ... (", 5 - tries, " tries left)"),
             time.sleep(5 * tries)
-    print ("Failed to download ", fileName)
+    print("Failed to download ", file_name)
 
-def downloadEpisodes(current_session, episodes, title, seasonNumber, settings):
+def download_episodes(current_session, episodes, title, season_number, settings):
     index = 0
-    downloadedEpisodes = []
+    downloaded_episodes = []
     for episode in episodes:
         index += 1
         url = "https://animelon.com/video/" + episode
-        fileName = title + " S" + str(seasonNumber) + "E" + str(index) + ".mp4"
+        file_name = title + " S" + str(season_number) + "E" + str(index) + ".mp4"
         os.makedirs(settings.save_path, exist_ok=True)
-        fileName = os.path.join(settings.save_path, fileName)
-        print(fileName, " : ", url)
+        file_name = os.path.join(settings.save_path, file_name)
+        print(file_name, " : ", url)
         try:
-            downloadFromVideoPage(current_session, url, settings, fileName = fileName)
-            downloadedEpisodes.append(index)
+            download_from_video_page(current_session, url, settings, file_name)
+            downloaded_episodes.append(index)
         except Exception:
             print("Error: Failed to download " + url, file=sys.stderr)
             print(traceback.format_exc())
 
-def downloadSeries(current_session, url, settings):
-    resObj = getEpisodeList(current_session, url)
-    if resObj is None:
+def download_series(current_session, url, settings):
+    res_obj = get_episode_list(current_session, url)
+    if res_obj is None:
         return
-    title = resObj["_id"]
+    title = res_obj["_id"]
     print("Title: ", title)
-    seriesSavePath = os.path.join(settings.save_path, title)
-    seasons = resObj["seasons"]
+    series_save_path = os.path.join(settings.save_path, title)
+    seasons = res_obj["seasons"]
     for season in seasons:
-        seasonNumber = int(season["number"])
-        seasonSavePath = os.path.join(seriesSavePath, "S%.2d" % seasonNumber)
-        settings = settings_tuple(seasonSavePath, settings.subtitles_only, settings.quality_priorities)
-        os.makedirs(seasonSavePath, exist_ok=True)
-        print("Season %d:" % (seasonNumber))
+        season_number = int(season["number"])
+        season_save_path = os.path.join(series_save_path, "S%.2d" % season_number)
+        settings = settings_tuple(season_save_path, settings.subtitles_only, settings.quality_priorities)
+        os.makedirs(season_save_path, exist_ok=True)
+        print("Season %d:" % (season_number))
         episodes = season["episodes"]
-        downloadEpisodes(current_session, episodes, title, seasonNumber, settings)
+        download_episodes(current_session, episodes, title, season_number, settings)
 
-parser = argparse.ArgumentParser(description='Downloads videos from animelon.com')
-parser.add_argument('videoURLs', metavar='videoURLs', type=str, nargs='+', help='A series or video page URL, eg: https://animelon.com/series/Death%%20Note or https://animelon.com/video/579b1be6c13aa2a6b28f1364')
-parser.add_argument("--save_path", '-f', metavar='savePath', help='Path to save', type=str, default="./")
-parser.add_argument('--subtitles_only', help='Only downloads subtitles', action='store', default=False, const=True, nargs='?')
-parser.add_argument('--quality_priorities', help='Set quality priorities (ozez, stz, tsz)', default=["ozez", "stz", "tsz"], type=str, nargs='+')
+parser = argparse.ArgumentParser()
+parser.add_argument("urls", metavar="", type=str, nargs="+", help="One or more series or video page URLs")
+parser.add_argument("--dir", metavar="PATH", help="Directory path to save files to", type=str, default="./")
+parser.add_argument("--subs_only", metavar="", help="Only download subtitles", action="store", default=False)
+parser.add_argument("--quality", metavar="", help="List of quality priorities from highest to lowest priority (ozez stz tsz)", default=["ozez", "stz", "tsz"], type=str, nargs="+")
 args = parser.parse_args()
 
 current_session = session_tuple(requests.Session(), { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36" })
 current_session.session.headers.update(current_session.headers)
 
-settings = settings_tuple(args.save_path, args.subtitles_only, args.quality_priorities)
+settings = settings_tuple(args.dir, args.subs_only, args.quality)
 
 dlEpisodes = []
-for url in args.videoURLs:
+for url in args.urls:
     try:
         type = url.split('/')[3]
     except IndexError:
         print('Error: Bad URL : "%s"' % url)
         sys.exit()
     if type == 'series':
-        downloadSeries(current_session, url, settings)
+        download_series(current_session, url, settings)
     elif type == 'video':
-        downloadFromVideoPage(current_session, url, settings)
+        download_from_video_page(current_session, url, settings)
     else:
         print('Error: Unknown URL type "%"' % type, file=sys.stderr)

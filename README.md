@@ -1,45 +1,44 @@
-
-
-# animelon_download
+# Animelon Download
 Command line downloader for https://animelon.com/
 
-## Requirements:
-       requests
-       progressbar
-       numpy
-       pycryptodome
-## Usage:
+## Dependencies:
+```
+requests
+pycryptodome
+```
 
-       $ ./animelon_dl.py -h
-       usage: animelon_dl.py [-h] [--sleepTime delay] [--savePath savePath]
-                             [--forks forks] [--maxTries maxTries]
-                             [--sleepTimeRetry sleepTimeRetry]
-                             [--subtitlesType subtitlesType [subtitlesType ...]]
-                             [--subtitlesOnly [SUBTITLESONLY]]
-                             videoURLs [videoURLs ...]
+## Args:
 
-       Downloads videos from animelon.com
+```
+usage: animelon_dl.py [-h] [--dir PATH] [--subs_only] [--quality  [...]]  [...]
+```
 
-       positional arguments:
-         videoURLs             A series or video page URL, eg:
-                               https://animelon.com/series/Death%20Note or
-                               https://animelon.com/video/579b1be6c13aa2a6b28f1364
+### Mandatory:
 
-       optional arguments:
-         -h, --help            show this help message and exit
-         --sleepTime delay, -d delay
-                               Sleep time between each download (defaults to 5)
-         --savePath savePath, -f savePath
-                               Path to save
-         --forks forks         Number of worker process for simultaneous downloads
-                               (defaults to 1)
-         --maxTries maxTries   Maximum number of retries in case of failed requests
-                               (defaults to 5)
-         --sleepTimeRetry sleepTimeRetry
-                               Sleep time between retries (defaults to 5)
-         --subtitlesType subtitlesType [subtitlesType ...]
-                               Subtitles types to download (englishSub, romajiSub,
-                               hiraganaSub, japaneseSub, none)
-         --subtitlesOnly [SUBTITLESONLY]
-                               Only downloads subtitles
+- `urls`: One or more series or video page URLs. This arg must come after all other args.
 
+    To enter multiple URLs follow the following format:
+
+    ```
+    animelon_dl.py url1 url2 url3
+    ```
+
+### Optional:
+
+- `--dir`: Directory path to save files to. Default: `./`.
+
+- `--subs_only`: Only download subtitles. Default: `false`.
+
+- `--quality`: List of quality priorities from highest to lowest priority. Default: `"ozez stz tsz"`.
+
+    From highest to lowest quality: "ozez stz tsz".
+
+## Dependencies
+
+Python 3: [Download link](https://www.python.org/downloads/)
+
+Python `requests` and `pycryptodome` modules: To install them, enter the following command in cmd or a terminal:
+
+```
+pip install requests pycryptodome
+```
