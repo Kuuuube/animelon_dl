@@ -163,8 +163,8 @@ def download_from_video_page(current_session, url, settings, id = None, file_nam
             file = download_from_res_obj(current_session, jsonsed["resObj"], file_name, settings)
             if file is not None or (file == "skipped video" and settings.subtitles_only):
                 return file
-            print ("Failed to download " + str(file_name) + " retrying ... ( " + str(5 - tries) + " tries left)"),
-            time.sleep(5 * tries)
+        print ("Failed to download " + str(file_name) + " retrying ... ( " + str(5 - tries) + " tries left)"),
+        time.sleep(5)
     print("Failed to download " + str(file_name))
 
 def download_episodes(current_session, episodes, title, season_number, settings):
