@@ -11,21 +11,37 @@ import traceback
 session_tuple = collections.namedtuple("session", "session headers")
 settings_tuple = collections.namedtuple("settings", "save_path subtitles_only quality_priorities")
 
-def download_video(current_session, url, file_name, stream, quality):
-    video = stream
-    if video is None:
-        video = current_session.session.get(url, stream = True)
+def download_video(current_session, url, file_name, quality):
+    file_size = 0
+    if os.path.exists(file_name):
+        print(str(file_name) + " previously saved, attempting to resume download")
+        current_session.session.headers["Range"] = "bytes=" + str(os.path.getsize(file_name)) + "-"
+        current_session.session.headers.update(current_session.session.headers)
+        file_size = os.path.getsize(file_name)
 
-    file_size = int(video.headers.get('Content-Length', None))
+    video = current_session.session.get(url, stream = True)
+    if video.status_code not in [200, 206]:
+        return False
+
+    file_size = int(video.headers.get('Content-Length', None)) + file_size
     print("Downloading : " + str(file_name.split('/')[-1]) + " " + "(%.2f MB)" % (file_size * 1024 ** -2) + " " + quality + " quality...")
     start_time = time.time()
     progress_bar(0, file_size, start_time, start_time, 80, True)
-    with open(file_name, 'wb') as f:
+
+    write_mode = "wb"
+    if os.path.exists(file_name):
+        write_mode = "ab"
+
+    with open(file_name, write_mode) as f:
         for chunk in video.iter_content(2048):
             f.write(chunk)
             progress_bar(os.path.getsize(file_name), file_size, start_time, time.time(), 80, False)
 
     progress_bar(file_size, file_size, start_time, time.time(), 80, False) #show 100% even if the last progress_bar update does not show 100%
+
+    current_session.session.headers.update(current_session.headers) #headers must be reset back to default
+
+    return True
 
 def progress_bar(current, max, start_time, current_time, bar_size, init):
     if not init:
@@ -116,12 +132,12 @@ def download_from_res_obj(current_session, res_obj, file_name, settings):
         for quality in settings.quality_priorities:
             if quality in video_urls_sublist.keys():
                 video_url = video_urls_sublist[quality]
-                video_stream = current_session.session.get(video_url, stream=True)
-                if video_stream.status_code == 200:
-                    download_video(current_session, video_url, file_name, video_stream, quality)
-                    print("Finished downloading " + str(file_name))
-                    time.sleep(5)
-                    return file_name
+                download_status = download_video(current_session, video_url, file_name, quality)
+                if not download_status:
+                    return
+                print("Finished downloading " + str(file_name))
+                time.sleep(5)
+                return file_name
 
 def get_episode_list(current_session, series_url):
     series_name = series_url.rsplit('/', 1)[-1]
@@ -220,9 +236,12 @@ for url in args.urls:
     except IndexError:
         print('Error: Bad URL : "%s"' % url)
         sys.exit()
-    if type == 'series':
-        download_series(current_session, url, settings)
-    elif type == 'video':
-        download_from_video_page(current_session, url, settings)
-    else:
-        print('Error: Unknown URL type "%"' % type, file=sys.stderr)
+    try:
+        if type == 'series':
+            download_series(current_session, url, settings)
+        elif type == 'video':
+            download_from_video_page(current_session, url, settings)
+        else:
+            print('Error: Unknown URL type "%"' % type, file=sys.stderr)
+    except KeyboardInterrupt:
+        sys.exit()
