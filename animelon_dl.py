@@ -19,6 +19,7 @@ def download_video(current_session, url, file_name, quality):
         current_session.session.headers.update(current_session.session.headers)
         file_size = os.path.getsize(file_name)
 
+    time.sleep(5) #decreases liklihood of needing a request retry
     video = current_session.session.get(url, stream = True)
     if video.status_code not in [200, 206]:
         return False
@@ -136,7 +137,6 @@ def download_from_res_obj(current_session, res_obj, file_name, settings):
                 if not download_status:
                     return
                 print("Finished downloading " + str(file_name))
-                time.sleep(5)
                 return file_name
 
 def get_episode_list(current_session, series_url):
