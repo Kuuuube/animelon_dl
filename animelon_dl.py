@@ -9,9 +9,9 @@ import collections
 import traceback
 
 session_tuple = collections.namedtuple("session", "session headers")
-settings_tuple = collections.namedtuple("settings", "save_path subtitles_only quality_priorities")
+settings_tuple = collections.namedtuple("settings", "save_path subtitles_only quality_priorities sleep")
 
-def download_video(current_session, url, file_name, quality):
+def download_video(current_session, url, file_name, quality, settings):
     file_size = 0
     if os.path.exists(file_name):
         print(str(file_name) + " previously saved, attempting to resume download")
@@ -19,7 +19,7 @@ def download_video(current_session, url, file_name, quality):
         current_session.session.headers.update(current_session.session.headers)
         file_size = os.path.getsize(file_name)
 
-    time.sleep(5) #decreases liklihood of needing a request retry
+    time.sleep(settings.sleep) #decreases liklihood of needing a request retry
     video = current_session.session.get(url, stream = True)
     if video.status_code not in [200, 206]:
         return False
@@ -133,13 +133,13 @@ def download_from_res_obj(current_session, res_obj, file_name, settings):
         for quality in settings.quality_priorities:
             if quality in video_urls_sublist.keys():
                 video_url = video_urls_sublist[quality]
-                download_status = download_video(current_session, video_url, file_name, quality)
+                download_status = download_video(current_session, video_url, file_name, quality, settings)
                 if not download_status:
                     return
                 print("Finished downloading " + str(file_name))
                 return file_name
 
-def get_episode_list(current_session, series_url):
+def get_episode_list(current_session, series_url, settings):
     series_name = series_url.rsplit('/', 1)[-1]
     url = "https://animelon.com/api/series/" + series_name
     status_code = 403
@@ -150,7 +150,7 @@ def get_episode_list(current_session, series_url):
         tries += 1
         if status_code == 200:
             break
-        time.sleep(0.5)
+        time.sleep(settings.sleep)
     if (status_code != 200):
         print("Error getting anime info")
         return None
@@ -159,7 +159,7 @@ def get_episode_list(current_session, series_url):
         res_obj = jsoned["resObj"]
         if res_obj is None and '\\' in series_url:
             series_url = series_url.replace('\\', '')
-            return get_episode_list(current_session, series_url)
+            return get_episode_list(current_session, series_url, settings)
     except Exception:
         print("Error: Could not parse anime info :\n", traceback.format_exc(), url, "\n", response, response.content, file=sys.stderr)
         return None
@@ -180,7 +180,7 @@ def download_from_video_page(current_session, url, settings, id = None, file_nam
             if file is not None or (file == "skipped video" and settings.subtitles_only):
                 return file
         print ("Failed to download " + str(file_name) + " retrying ... ( " + str(5 - tries) + " tries left)"),
-        time.sleep(5)
+        time.sleep(settings.sleep)
     print("Failed to download " + str(file_name))
 
 def download_episodes(current_session, episodes, title, season_number, settings):
@@ -201,7 +201,7 @@ def download_episodes(current_session, episodes, title, season_number, settings)
             print(traceback.format_exc())
 
 def download_series(current_session, url, settings):
-    res_obj = get_episode_list(current_session, url)
+    res_obj = get_episode_list(current_session, url, settings)
     if res_obj is None:
         return
     title = res_obj["_id"]
@@ -222,12 +222,13 @@ parser.add_argument("urls", metavar="", type=str, nargs="+", help="One or more s
 parser.add_argument("--dir", metavar="PATH", help="Directory path to save files to", type=str, default="./")
 parser.add_argument("--subs_only", metavar="", help="Only download subtitles", action="store", default=False)
 parser.add_argument("--quality", metavar="", help="List of quality priorities from highest to lowest priority (ozez stz tsz)", default=["ozez", "stz", "tsz"], type=str, nargs="+")
+parser.add_argument("--sleep", metavar="", help="Time in seconds to sleep between requests", default=5, type=int)
 args = parser.parse_args()
 
 current_session = session_tuple(requests.Session(), { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36" })
 current_session.session.headers.update(current_session.headers)
 
-settings = settings_tuple(args.dir, args.subs_only, args.quality)
+settings = settings_tuple(args.dir, args.subs_only, args.quality, args.sleep)
 
 dlEpisodes = []
 for url in args.urls:

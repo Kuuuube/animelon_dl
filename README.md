@@ -28,6 +28,8 @@ usage: animelon_dl.py [-h] [--dir PATH] [--subs_only] [--quality  [...]]  [...]
 
     From highest to lowest quality: "ozez stz tsz".
 
+- `--sleep`: Time in seconds to sleep between requests. Default: `5`.
+
 ## Dependencies
 
 Python 3: [Download link](https://www.python.org/downloads/)
