@@ -220,7 +220,7 @@ def download_series(current_session, url, settings):
 parser = argparse.ArgumentParser()
 parser.add_argument("urls", metavar="", type=str, nargs="+", help="One or more series or video page URLs")
 parser.add_argument("--dir", metavar="PATH", help="Directory path to save files to", type=str, default="./")
-parser.add_argument("--subs_only", metavar="", help="Only download subtitles", action="store", default=False)
+parser.add_argument("--subs_only", help="Only download subtitles", action="store_true", default=False)
 parser.add_argument("--quality", metavar="", help="List of quality priorities from highest to lowest priority (ozez stz tsz)", default=["ozez", "stz", "tsz"], type=str, nargs="+")
 parser.add_argument("--sleep", metavar="", help="Time in seconds to sleep between requests", default=5, type=int)
 args = parser.parse_args()
