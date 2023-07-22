@@ -171,9 +171,9 @@ def download_from_video_page(current_session, url, settings, id = None, file_nam
     if id is None:
         id = url.split("/")[-1]
 
-    apiUrl = "https://animelon.com/api/languagevideo/findByVideo?videoId=%s&learnerLanguage=en&subs=1&cdnLink=1&viewCounter=1" % (id)
+    api_url = "https://animelon.com/api/languagevideo/findByVideo?videoId=%s&learnerLanguage=en&subs=1&cdnLink=1&viewCounter=1" % (id)
     for tries in range(5):
-        response = requests.get(apiUrl, headers = current_session.headers)
+        response = requests.get(api_url, headers = current_session.headers)
         if response.status_code == 200:
             jsonsed = json.loads(response.content)
             file = download_from_res_obj(current_session, jsonsed["resObj"], file_name, settings)
@@ -185,7 +185,6 @@ def download_from_video_page(current_session, url, settings, id = None, file_nam
 
 def download_episodes(current_session, episodes, title, season_number, settings):
     index = 0
-    downloaded_episodes = []
     for episode in episodes:
         index += 1
         url = "https://animelon.com/video/" + episode
@@ -194,8 +193,7 @@ def download_episodes(current_session, episodes, title, season_number, settings)
         file_name = os.path.join(settings.save_path, file_name)
         print(str(file_name) + " : " + url)
         try:
-            download_from_video_page(current_session, url, settings, file_name)
-            downloaded_episodes.append(index)
+            download_from_video_page(current_session, url, settings, file_name = file_name)
         except Exception:
             print("Error: Failed to download " + url, file=sys.stderr)
             print(traceback.format_exc())
@@ -211,7 +209,7 @@ def download_series(current_session, url, settings):
     for season in seasons:
         season_number = int(season["number"])
         season_save_path = os.path.join(series_save_path, "S%.2d" % season_number)
-        settings = settings_tuple(season_save_path, settings.subtitles_only, settings.quality_priorities)
+        settings = settings_tuple(season_save_path, settings.subtitles_only, settings.quality_priorities, settings.sleep)
         os.makedirs(season_save_path, exist_ok=True)
         print("Season %d:" % (season_number))
         episodes = season["episodes"]
