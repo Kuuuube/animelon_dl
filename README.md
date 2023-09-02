@@ -1,4 +1,4 @@
-# Animelon Download
+# Animelon DL
 
 Command line downloader for https://animelon.com/
 
