@@ -21,6 +21,10 @@ def download_video(current_session, url, file_name, quality, settings):
 
     time.sleep(settings.sleep) #decreases liklihood of needing a request retry
     video = current_session.session.get(url, stream = True)
+    if video.status_code == 416:
+        print(str(file_name) + " download previously completed, not redownloading")
+        return True
+
     if video.status_code not in [200, 206]:
         return False
 
