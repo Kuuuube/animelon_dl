@@ -13,6 +13,9 @@ settings_tuple = collections.namedtuple("settings", "save_path subtitles_only qu
 
 def download_video(current_session, url, file_name, quality, settings):
     file_size = 0
+    if "Range" in current_session.session.headers:
+        current_session.session.headers.pop("Range") #reset the range header to not mistakenly partially download anything
+
     if os.path.exists(file_name):
         print(str(file_name) + " previously saved, attempting to resume download")
         current_session.session.headers["Range"] = "bytes=" + str(os.path.getsize(file_name)) + "-"
