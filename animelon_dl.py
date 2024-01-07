@@ -131,20 +131,22 @@ def download_from_res_obj(current_session, res_obj, file_name, settings):
 
     video = (res_obj["video"])
     video_urls = video["videoURLsData"]
+    video_qualities = {}
     for user_agent_key in video_urls.keys():
-        #animelon will allow us to download the video only if we send the corresponding user agent
-        #also idk why the userAgent is formatted that way in the JSON, but we have to replace this.
-        current_session.session.headers.update({"User-Agent": user_agent_key.replace("=+(dot)+=", ".")})
-        mobile_url_list = video_urls[user_agent_key]
-        video_urls_sublist = mobile_url_list["videoURLs"]
+        urls = video_urls[user_agent_key]["videoURLs"]
         for quality in settings.quality_priorities:
-            if quality in video_urls_sublist.keys():
-                video_url = video_urls_sublist[quality]
-                download_status = download_video(current_session, video_url, file_name, quality, settings)
-                if not download_status:
-                    return
-                print("Finished downloading " + str(file_name))
-                return file_name
+            if quality in urls.keys():
+                video_qualities[quality] = {"url": urls[quality] , "user_agent": user_agent_key.replace("=+(dot)+=", ".")}
+
+    for quality in settings.quality_priorities:
+        if quality in video_qualities.keys():
+            video_url = video_qualities[quality]["url"]
+            current_session.session.headers.update({"User-Agent": video_qualities[quality]["user_agent"]})
+            download_status = download_video(current_session, video_url, file_name, quality, settings)
+            if not download_status:
+                return
+            print("Finished downloading " + str(file_name))
+            return file_name
 
 def get_episode_list(current_session, series_url, settings):
     series_name = series_url.rsplit('/', 1)[-1]
